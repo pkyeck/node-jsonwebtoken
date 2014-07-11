@@ -1,5 +1,32 @@
 var jws = require('jws');
 
+// CUSTOM ERRORS
+
+function TokenExpired(msg) {
+  this.message = msg;
+  this.canBeRenewed = false;
+  this.stack = (new Error()).stack;
+}
+
+TokenExpired.prototype = new Error;
+TokenExpired.prototype.name = 'TokenExpired';
+
+function TokenInvalid(msg) {
+  this.message = msg;
+  this.canBeRenewed = false;
+  this.stack = (new Error()).stack;
+}
+
+TokenInvalid.prototype = new Error;
+TokenInvalid.prototype.name = 'TokenInvalid';
+
+module.exports.errors = {
+  TokenExpired: TokenExpired,
+  TokenInvalid: TokenInvalid
+};
+
+// end CUSTOM ERRORS
+
 module.exports.decode = function (jwt) {
   return jws.decode(jwt).payload;
 };
@@ -43,23 +70,23 @@ module.exports.verify = function(jwtString, secretOrPublicKey, options, callback
   }
 
   if (!valid)
-    return callback(new Error('invalid signature'));
+    return callback(new TokenInvalid('invalid signature'));
 
   var payload = this.decode(jwtString);
 
   if (payload.exp) {
     if (Math.round(Date.now()) / 1000 >= payload.exp)
-      return callback(new Error('jwt expired'));
+      return callback(new TokenExpired('jwt expired'));
   }
 
   if (options.audience) {
     if (payload.aud !== options.audience)
-      return callback(new Error('jwt audience invalid. expected: ' + payload.aud));
+      return callback(new TokenInvalid('jwt audience invalid. expected: ' + payload.aud));
   }
 
   if (options.issuer) {
     if (payload.iss !== options.issuer)
-      return callback(new Error('jwt issuer invalid. expected: ' + payload.iss));
+      return callback(new TokenInvalid('jwt issuer invalid. expected: ' + payload.iss));
   }
 
   callback(null, payload);
