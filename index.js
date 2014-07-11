@@ -75,8 +75,18 @@ module.exports.verify = function(jwtString, secretOrPublicKey, options, callback
   var payload = this.decode(jwtString);
 
   if (payload.exp) {
-    if (Math.round(Date.now()) / 1000 >= payload.exp)
-      return callback(new TokenExpired('jwt expired'));
+    var now = Math.round(Date.now()) / 1000;
+
+    if (now >= payload.exp) {
+      var expired = new TokenExpired('jwt expired');
+
+      if (typeof options.grace === "number" &&
+          payload.iat > now - options.grace * 60) {
+        expired.canBeRenewed = true;
+      }
+
+      return callback(expired);
+    }
   }
 
   if (options.audience) {
